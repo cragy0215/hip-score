@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<title>대퇴비구충돌증후군(FAI) 기능 평가 — 이화 Hip &amp; Performance Center</title>
+<title>고관절 관절경 기능 평가 — 이화 Hip &amp; Performance Center</title>
 <style>
   /* ====== 의료진 설정 영역 ======
      아래 GAS_WEB_APP_URL 에 Google Apps Script 웹앱 /exec URL 을 넣으세요.
@@ -177,8 +177,8 @@
 
   <header class="h">
     <div class="h-brand"><span class="emblem">✦</span> 이화 Hip &amp; Performance Center</div>
-    <h1>대퇴비구충돌증후군(FAI) 기능 평가</h1>
-    <div class="sub">관절경 수술 전후 고관절 기능 경과 · Ewha Womans University Mokdong Hospital</div>
+    <h1>고관절 관절경 기능 평가</h1>
+    <div class="sub">비구순·둔부 힘줄 봉합 등 수술 전후 고관절 기능 경과 · Ewha Womans University Mokdong Hospital</div>
   </header>
 
   <section class="welcome">
@@ -190,8 +190,8 @@
   <section class="card">
     <h2>환자 정보</h2>
     <div class="form-row">
-      <label for="regNo">등록번호</label>
-      <input id="regNo" type="text" inputmode="numeric" autocomplete="off" placeholder="병원 등록번호" />
+      <label for="regNo">등록번호<span id="regNoHint" style="display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:2px">숫자만 · 주민등록번호 아님</span></label>
+      <input id="regNo" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="병원 등록번호 (숫자만)" />
     </div>
     <div class="form-row">
       <label>평가 시점</label>
@@ -477,7 +477,7 @@
       [...b.parentElement.children].forEach(x=>x.classList.toggle("selected",x===b));
       clearMissing("hos-"+i); updateProgress();
     });
-    document.getElementById("regNo").addEventListener("input",function(){ this.classList.remove("miss"); updateProgress(); });
+    document.getElementById("regNo").addEventListener("input",function(){ this.classList.remove("miss"); regNoHintUpdate(this); updateProgress(); });
     document.getElementById("submitBtn").addEventListener("click",submitForm);
     document.getElementById("resetBtn").addEventListener("click",()=>{ if(confirm("입력 내용을 모두 지우고 처음부터 다시 시작하시겠습니까?")) resetForm(); });
   }
@@ -592,8 +592,13 @@
 
     const items=buildItemsMatrix(tsLocal); // 가로형 항목 매트릭스 (표준화 0-100)
 
+    // 간호사 이메일/차트용 한 줄 요약
+    const chartText = `[${FORM_ID} 기능평가 · ${state.timepoint}] mHHS ${m.total} / NAHS ${n.norm}`
+      + ((state.athlete==="예" && h.percent!==null) ? ` / HOS ${h.percent}%` : "")
+      + ` / VAS 안정 ${state.vas.vas_rest}·활동 ${state.vas.vas_activity} (등록번호 ${regNo})`;
+
     return {
-      form:FORM_ID, sheetHeaders:headers, sheetRow:row,
+      form:FORM_ID, sheetHeaders:headers, sheetRow:row, chartText:chartText,
       itemsHeaders:items.headers, itemsRows:[items.row],
       submittedAtLocal:tsLocal,
       regNo, timepoint:state.timepoint, athlete:state.athlete,
@@ -606,11 +611,19 @@
   function hideOverlay(){ document.getElementById("overlay").classList.remove("show"); }
 
   // 빈 항목(신원+점수)을 모두 표시하고, 화면 순서대로 배열 반환 (첫 항목으로 스크롤)
+  // 등록번호는 병원 등록번호(숫자 6~10자리)만 받는다. 주민등록번호(13자리)가 들어가는 것을 막는다. (2026-11-16)
+  function regNoBad(v){ const d=String(v||"").replace(/\D/g,""); return d.length<6 || d.length>10; }
+  function regNoHintUpdate(el){
+    const h=document.getElementById("regNoHint"); if(!h) return;
+    const bad = el.value.trim() && regNoBad(el.value);
+    h.textContent = bad ? "병원 등록번호가 맞는지 확인해 주세요 (주민등록번호 아님)" : "숫자만 · 주민등록번호 아님";
+    h.style.color = bad ? "var(--warn)" : "var(--muted)";
+  }
   function markMissing() {
     const els=[];
     const reg=document.getElementById("regNo");
-    reg.classList.toggle("miss", !reg.value.trim());
-    if(!reg.value.trim()) els.push(reg.closest(".form-row"));
+    reg.classList.toggle("miss", regNoBad(reg.value)); regNoHintUpdate(reg);
+    if(regNoBad(reg.value)) els.push(reg.closest(".form-row"));
     const segT=document.getElementById("segTime"); segT.classList.toggle("miss", !state.timepoint);
     if(!state.timepoint) els.push(segT.closest(".form-row"));
     const segA=document.getElementById("segAthlete"); segA.classList.toggle("miss", !state.athlete);

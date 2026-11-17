@@ -125,8 +125,8 @@
   <section class="card">
     <h2>환자 정보</h2>
     <div class="form-row">
-      <label for="regNo">등록번호</label>
-      <input id="regNo" type="text" inputmode="numeric" autocomplete="off" placeholder="병원 등록번호" />
+      <label for="regNo">등록번호<span id="regNoHint" style="display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:2px">숫자만 · 주민등록번호 아님</span></label>
+      <input id="regNo" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="병원 등록번호 (숫자만)" />
     </div>
     <div class="form-row">
       <label>평가 시점</label>
@@ -309,7 +309,7 @@
     });
     document.getElementById("phatActList").addEventListener("click",e=>{ const b=e.target.closest(".opt"); if(!b) return; state.phatAct=+b.dataset.p; [...document.getElementById("phatActOpts").children].forEach(x=>x.classList.toggle("selected",x===b)); document.getElementById("phatActList").classList.remove("show-missing"); updateProgress(); });
     document.getElementById("phatTenderList").addEventListener("click",e=>{ const b=e.target.closest(".opt"); if(!b) return; state.phatTender=+b.dataset.p; [...document.getElementById("phatTenderOpts").children].forEach(x=>x.classList.toggle("selected",x===b)); document.getElementById("phatTenderList").classList.remove("show-missing"); updateProgress(); });
-    document.getElementById("regNo").addEventListener("input",function(){ this.classList.remove("miss"); updateProgress(); });
+    document.getElementById("regNo").addEventListener("input",function(){ this.classList.remove("miss"); regNoHintUpdate(this); updateProgress(); });
     document.getElementById("submitBtn").addEventListener("click",submitForm);
     document.getElementById("resetBtn").addEventListener("click",()=>{ if(confirm("입력 내용을 모두 지우고 처음부터 다시 시작하시겠습니까?")) resetForm(); });
   }
@@ -372,9 +372,17 @@
 
   function showOverlay(html){ document.getElementById("modal").innerHTML=html; document.getElementById("overlay").classList.add("show"); }
   function hideOverlay(){ document.getElementById("overlay").classList.remove("show"); }
+  // 등록번호는 병원 등록번호(숫자 6~10자리)만 받는다. 주민등록번호(13자리)가 들어가는 것을 막는다. (2026-11-16)
+  function regNoBad(v){ const d=String(v||"").replace(/\D/g,""); return d.length<6 || d.length>10; }
+  function regNoHintUpdate(el){
+    const h=document.getElementById("regNoHint"); if(!h) return;
+    const bad = el.value.trim() && regNoBad(el.value);
+    h.textContent = bad ? "병원 등록번호가 맞는지 확인해 주세요 (주민등록번호 아님)" : "숫자만 · 주민등록번호 아님";
+    h.style.color = bad ? "var(--warn)" : "var(--muted)";
+  }
   function markMissing() {
     const els=[];
-    const reg=document.getElementById("regNo"); reg.classList.toggle("miss", !reg.value.trim()); if(!reg.value.trim()) els.push(reg.closest(".form-row"));
+    const reg=document.getElementById("regNo"); reg.classList.toggle("miss", regNoBad(reg.value)); regNoHintUpdate(reg); if(regNoBad(reg.value)) els.push(reg.closest(".form-row"));
     const segT=document.getElementById("segTime"); segT.classList.toggle("miss", !state.timepoint); if(!state.timepoint) els.push(segT.closest(".form-row"));
     const q=(cond,id)=>{ const el=document.getElementById(id); if(el){ el.classList.toggle("show-missing",cond); if(cond) els.push(el); } };
     q(state.vas.vas_rest===null,"vas-vas_rest"); q(state.vas.vas_activity===null,"vas-vas_activity");
